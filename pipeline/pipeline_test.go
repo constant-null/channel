@@ -29,7 +29,28 @@ func TestOneHandler(t *testing.T) {
 	pipe.Input() <- 0
 
 	resultValue := <-pipe.Output()
-	if resultValue != 3 {
+	if resultValue != 1 {
+		t.Fail()
+	}
+	pipe.Wait()
+}
+
+func TestTwoHandler(t *testing.T) {
+	pipe := Pipeline{
+		NewChannel: func() chan interface{} {
+			return make(chan interface{}, 1)
+		},
+	}
+
+	pipe.Add(IncHandler{})
+	pipe.Add(IncHandler{})
+
+	pipe.Start()
+
+	pipe.Input() <- 0
+
+	resultValue := <-pipe.Output()
+	if resultValue != 2 {
 		t.Fail()
 	}
 	pipe.Wait()
@@ -45,13 +66,15 @@ func TestSeveralHandlers(t *testing.T) {
 	pipe.Add(IncHandler{})
 	pipe.Add(IncHandler{})
 	pipe.Add(IncHandler{})
+	pipe.Add(IncHandler{})
+	pipe.Add(IncHandler{})
 
 	pipe.Start()
 
 	pipe.Input() <- 0
 
 	resultValue := <-pipe.Output()
-	if resultValue != 3 {
+	if resultValue != 5 {
 		t.Fail()
 	}
 	pipe.Wait()

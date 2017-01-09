@@ -38,19 +38,25 @@ func (p *Pipeline) Add(handler Handler) {
 
 // Start starting Handlers
 func (p *Pipeline) Start() {
-	input := p.NewChannel()
+	var input chan interface{}
+	var output chan interface{}
+
 	for index, handler := range p.handlers {
 		p.wg.Add(1)
-		switch index {
-		case 0:
-			go handler.Handle(p.Input(), input, &p.wg)
-		case len(p.handlers) - 1:
-			go handler.Handle(input, p.Output(), &p.wg)
-		default:
-			output := p.NewChannel()
-			go handler.Handle(input, output, &p.wg)
+
+		if index == 0 {
+			input = p.Input()
+		} else {
 			input = output
 		}
+
+		if index == len(p.handlers)-1 {
+			output = p.Output()
+		} else {
+			output = p.NewChannel()
+		}
+
+		go handler.Handle(input, output, &p.wg)
 	}
 }
 
