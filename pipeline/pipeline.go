@@ -64,3 +64,8 @@ func (p *Pipeline) Start() {
 func (p *Pipeline) Wait() {
 	p.wg.Wait()
 }
+
+// Stop stops all gourotines and close channels
+func (p *Pipeline) Stop() {
+	close(p.Input())
+}
