@@ -22,6 +22,17 @@ func (h IncHandler) Handle(input chan interface{}, output chan interface{}, wg *
 	}
 }
 
+type OneTimeHandler struct {
+}
+
+func (h OneTimeHandler) Handle(input chan interface{}, output chan interface{}, wg *sync.WaitGroup) {
+	value := <-input
+	i := value.(int)
+	i++
+	output <- i
+	wg.Done()
+}
+
 func TestOneHandler(t *testing.T) {
 	pipe := Pipeline{
 		NewChannel: func() chan interface{} {
@@ -29,7 +40,7 @@ func TestOneHandler(t *testing.T) {
 		},
 	}
 
-	pipe.Add(IncHandler{})
+	pipe.Add(IncHandler{}, 1)
 
 	pipe.Start()
 
@@ -50,8 +61,8 @@ func TestTwoHandler(t *testing.T) {
 		},
 	}
 
-	pipe.Add(IncHandler{})
-	pipe.Add(IncHandler{})
+	pipe.Add(IncHandler{}, 1)
+	pipe.Add(IncHandler{}, 1)
 
 	pipe.Start()
 
@@ -73,11 +84,11 @@ func TestSeveralHandlers(t *testing.T) {
 		},
 	}
 
-	pipe.Add(IncHandler{})
-	pipe.Add(IncHandler{})
-	pipe.Add(IncHandler{})
-	pipe.Add(IncHandler{})
-	pipe.Add(IncHandler{})
+	pipe.Add(IncHandler{}, 1)
+	pipe.Add(IncHandler{}, 1)
+	pipe.Add(IncHandler{}, 1)
+	pipe.Add(IncHandler{}, 1)
+	pipe.Add(IncHandler{}, 1)
 
 	pipe.Start()
 
@@ -92,6 +103,33 @@ func TestSeveralHandlers(t *testing.T) {
 	pipe.Wait()
 }
 
+func TestDifferentScaling(t *testing.T) {
+	pipe := Pipeline{
+		NewChannel: func() chan interface{} {
+			return make(chan interface{}, 3)
+		},
+	}
+
+	pipe.Add(IncHandler{}, 1)
+	pipe.Add(OneTimeHandler{}, 3)
+
+	pipe.Start()
+
+	for i := 0; i < 3; i++ {
+		pipe.Input() <- 0
+	}
+
+	for i := 0; i < 3; i++ {
+		resultValue := <-pipe.Output()
+		if resultValue != 2 {
+			t.Fail()
+		}
+	}
+
+	pipe.Stop()
+	pipe.Wait()
+}
+
 func BenchmarkSeveralHandlers(b *testing.B) {
 	pipe := Pipeline{
 		NewChannel: func() chan interface{} {
@@ -99,11 +137,11 @@ func BenchmarkSeveralHandlers(b *testing.B) {
 		},
 	}
 
-	pipe.Add(IncHandler{})
-	pipe.Add(IncHandler{})
-	pipe.Add(IncHandler{})
-	pipe.Add(IncHandler{})
-	pipe.Add(IncHandler{})
+	pipe.Add(IncHandler{}, 1)
+	pipe.Add(IncHandler{}, 1)
+	pipe.Add(IncHandler{}, 1)
+	pipe.Add(IncHandler{}, 1)
+	pipe.Add(IncHandler{}, 1)
 
 	pipe.Start()
 

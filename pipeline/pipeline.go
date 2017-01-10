@@ -11,6 +11,7 @@ type Pipeline struct {
 	input      chan interface{}
 	output     chan interface{}
 	handlers   []Handler
+	scale      []int
 }
 
 // Input returns channel used to send data into pipeline
@@ -32,7 +33,8 @@ func (p *Pipeline) Output() chan interface{} {
 }
 
 // Add adds handler to the end of pipeline
-func (p *Pipeline) Add(handler Handler) {
+func (p *Pipeline) Add(handler Handler, scale int) {
+	p.scale = append(p.scale, scale)
 	p.handlers = append(p.handlers, handler)
 }
 
@@ -41,9 +43,7 @@ func (p *Pipeline) Start() {
 	var input chan interface{}
 	var output chan interface{}
 
-	for index, handler := range p.handlers {
-		p.wg.Add(1)
-
+	for index := range p.handlers {
 		if index == 0 {
 			input = p.Input()
 		} else {
@@ -56,7 +56,7 @@ func (p *Pipeline) Start() {
 			output = p.NewChannel()
 		}
 
-		go handler.Handle(input, output, &p.wg)
+		p.startHandlerByIndex(index, input, output)
 	}
 }
 
@@ -68,4 +68,13 @@ func (p *Pipeline) Wait() {
 // Stop stops all gourotines and close channels
 func (p *Pipeline) Stop() {
 	close(p.Input())
+}
+
+func (p *Pipeline) startHandlerByIndex(index int, input, output chan interface{}) {
+	scale := p.scale[index]
+	p.wg.Add(scale)
+
+	for i := 0; i < scale; i++ {
+		go p.handlers[index].Handle(input, output, &p.wg)
+	}
 }
